@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>Scratch プレビュー</title>
+  <style>
+    body { font-family: sans-serif; padding: 24px; background: #f5f5f5; }
+    h1 { margin-bottom: 16px; }
+    input[type=file] { margin-bottom: 16px; display: block; }
+    iframe {
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      display: block;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+  <h1>Scratch プレビュー</h1>
+  <input type="file" accept=".sb3" id="file-input">
+  <br>
+  <iframe id="preview" src="./player.html" width="480" height="360"
+    allowfullscreen allow="autoplay"></iframe>
+
+  <script>
+    const iframe = document.getElementById('preview');
+    const fileInput = document.getElementById('file-input');
+
+    let playerReady = false;
+    let pendingBuffer = null;
+
+    window.addEventListener('message', (e) => {
+      if (e.data && e.data.type === 'ready') {
+        playerReady = true;
+        if (pendingBuffer) {
+          sendToPlayer(pendingBuffer);
+          pendingBuffer = null;
+        }
+      }
+    });
+
+    function sendToPlayer(arrayBuffer) {
+      iframe.contentWindow.postMessage({ type: 'load', data: arrayBuffer }, '*');
+    }
+
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const arrayBuffer = await file.arrayBuffer();
+
+      // ここで .sb3 編集処理を挟める (JSZip等)
+      // const zip = await JSZip.loadAsync(arrayBuffer);
+      // zip.file("project.json", modifiedJson);
+      // const newBuffer = await zip.generateAsync({ type: 'arraybuffer' });
+      // sendToPlayer(newBuffer);
+
+      if (playerReady) {
+        sendToPlayer(arrayBuffer);
+      } else {
+        pendingBuffer = arrayBuffer;
+      }
+    });
+  </script>
+</body>
+</html>
