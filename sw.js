@@ -11,16 +11,34 @@ self.addEventListener('message', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  if (url.pathname === VIRTUAL_URL) {
-    if (!projectData) {
-      e.respondWith(new Response('No project data', { status: 404 }));
-      return;
-    }
-    e.respondWith(new Response(projectData, {
+  if (url.pathname !== VIRTUAL_URL) return;
+
+  // OPTIONSプリフライト対応
+  if (e.request.method === 'OPTIONS') {
+    e.respondWith(new Response(null, {
+      status: 204,
       headers: {
-        'Content-Type': 'application/zip',
         'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': '*',
       }
     }));
+    return;
   }
+
+  if (!projectData) {
+    e.respondWith(new Response('No project data', { status: 404 }));
+    return;
+  }
+
+  e.respondWith(new Response(projectData, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': '*',
+      'Content-Length': projectData.byteLength.toString(),
+    }
+  }));
 });
