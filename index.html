@@ -54,7 +54,7 @@
         statusEl.textContent = 'リロードしてください（Service Workerが有効になります）';
         return;
       }
-      controller.postMessage({ type: 'store', data: arrayBuffer }, [arrayBuffer]);
+      controller.postMessage({ type: 'store', data: arrayBuffer });
 
       const projectUrl = encodeURIComponent(location.origin + VIRTUAL_PATH);
       iframe.src = `${TURBOWARP_EMBED}?project_url=${projectUrl}&autoplay=true`;
