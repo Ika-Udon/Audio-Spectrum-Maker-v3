@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>Scratch プレビュー デモ</title>
+  <style>
+    body { font-family: sans-serif; padding: 24px; background: #f5f5f5; }
+    h1 { margin-bottom: 16px; }
+    input[type=file] { margin-bottom: 16px; display: block; }
+    iframe {
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      display: block;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+  <h1>Scratch プレビュー</h1>
+  <input type="file" accept=".sb3" id="file-input">
+  <iframe id="preview" src="./player.html" width="480" height="360" allowfullscreen></iframe>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script>
+    const fileInput = document.getElementById('file-input');
+    const iframe = document.getElementById('preview');
+
+    // iframeが読み込まれたか管理
+    let playerReady = false;
+    let pendingBuffer = null;
+
+    iframe.addEventListener('load', () => {
+      playerReady = true;
+      if (pendingBuffer) {
+        sendToPlayer(pendingBuffer);
+        pendingBuffer = null;
+      }
+    });
+
+    function sendToPlayer(arrayBuffer) {
+      iframe.contentWindow.postMessage({ type: 'load', data: arrayBuffer }, '*');
+    }
+
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const arrayBuffer = await file.arrayBuffer();
+
+      // ここで .sb3 の編集処理を挟む場合はJSZipで操作する
+      // 例:
+      // const zip = await JSZip.loadAsync(arrayBuffer);
+      // zip.file("project.json", modifiedJson);
+      // const newBuffer = await zip.generateAsync({ type: 'arraybuffer' });
+
+      if (playerReady) {
+        sendToPlayer(arrayBuffer);
+      } else {
+        pendingBuffer = arrayBuffer;
+      }
+    });
+  </script>
+</body>
+</html>
