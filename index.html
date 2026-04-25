@@ -56,6 +56,15 @@
             --drop-zone-border: rgba(201, 0, 49, 0.25);
             --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
             --progress-bg: #e2e8f0;
+            /* Pale rainbow for light mode */
+            --rainbow: linear-gradient(135deg,
+                    rgba(255, 150, 180, 0.25),
+                    rgba(255, 200, 150, 0.25),
+                    rgba(255, 240, 150, 0.25),
+                    rgba(150, 240, 200, 0.25),
+                    rgba(150, 200, 255, 0.25),
+                    rgba(200, 150, 255, 0.25),
+                    rgba(255, 150, 220, 0.25));
         }
 
         /* ===== Reset & Base ===== */
@@ -81,10 +90,44 @@
         /* ===== Layout ===== */
         .app {
             width: 100%;
-            max-width: 640px;
+            max-width: 1200px;
             display: flex;
             flex-direction: column;
             gap: 1.25rem;
+        }
+
+        .app-body {
+            display: flex;
+            flex-direction: row;
+            gap: 1.25rem;
+            align-items: flex-start;
+        }
+
+        .left-column {
+            flex: 2;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .right-column {
+            flex: 3;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            position: sticky;
+            top: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .app-body {
+                flex-direction: column;
+            }
+            .right-column {
+                position: static;
+            }
         }
 
         /* ===== Header ===== */
@@ -418,7 +461,7 @@
         /* ===== Canvas ===== */
         .preview-canvas {
             width: 100%;
-            height: 180px;
+            height: 220px;
             background: var(--canvas-bg);
             border-radius: 0.75rem;
             display: block;
@@ -516,133 +559,138 @@
             </div>
         </div>
 
-        <!-- File Selection -->
-        <div class="card">
-            <div class="drop-zone" id="dropZone">
-                <div class="drop-zone-icon">🎵</div>
-                <div class="drop-zone-text">
-                    音声ファイルを<strong>ドラッグ&ドロップ</strong><br>
-                    またはクリックして選択
+        <!-- 2カラム本体 -->
+        <div class="app-body">
+            <!-- 左カラム: 設定・出力系 -->
+            <div class="left-column">
+                <!-- ファイル選択 -->
+                <div class="card">
+                    <div class="drop-zone" id="dropZone">
+                        <div class="drop-zone-icon">🎵</div>
+                        <div class="drop-zone-text">
+                            音声ファイルを<strong>ドラッグ&ドロップ</strong><br>
+                            またはクリックして選択
+                        </div>
+                        <div class="file-name" id="fileName"></div>
+                    </div>
+                    <input type="file" id="audioFile"
+                        accept="audio/mpeg, audio/wav, audio/ogg, audio/flac, audio/aac, .mp3, .wav, .ogg, .flac, .aac, .m4a, .opus, .aiff">
                 </div>
-                <div class="file-name" id="fileName"></div>
-            </div>
-            <input type="file" id="audioFile"
-                accept="audio/mpeg, audio/wav, audio/ogg, audio/flac, audio/aac, .mp3, .wav, .ogg, .flac, .aac, .m4a, .opus, .aiff">
-        </div>
 
-        <!-- Settings (collapsible) -->
-        <div class="card">
-            <button class="settings-toggle" id="settingsToggle">
-                <span class="arrow">▶</span> 詳細設定
-            </button>
-            <div class="settings-body" id="settingsBody">
-                <div style="height:0.75rem"></div>
-                <div class="settings-grid">
-                    <div class="setting-item">
-                        <label for="minFreq">最小周波数 (Hz)</label>
-                        <input type="number" id="minFreq" value="20" min="1" step="1">
-                    </div>
-                    <div class="setting-item">
-                        <label for="maxFreq">最大周波数 (Hz)</label>
-                        <input type="number" id="maxFreq" value="24000" min="1" step="1">
-                    </div>
-                    <div class="setting-item">
-                        <label for="numBars">バーの数</label>
-                        <input type="number" id="numBars" value="480" min="1" step="1">
-                    </div>
-                    <div class="setting-item">
-                        <label for="barThickness">棒の太さ</label>
-                        <input type="number" id="barThickness" value="5" min="1" step="1">
-                    </div>
-                    <div class="setting-item">
-                        <label for="barHeightScale">高さスケール</label>
-                        <input type="number" id="barHeightScale" value="0.5" min="0" step="0.1">
-                    </div>
-                    <div class="setting-item">
-                        <label for="attack">アタック</label>
-                        <input type="number" id="attack" value="0.6" min="0" max="1" step="0.01">
-                    </div>
-                    <div class="setting-item">
-                        <label for="decay">ディケイ</label>
-                        <input type="number" id="decay" value="0.6" min="0" max="1" step="0.01">
-                    </div>
-                    <div class="setting-item">
-                        <label for="peakBrightness">ピーク輝度</label>
-                        <input type="number" id="peakBrightness" value="1.0" min="0" step="0.1">
-                    </div>
-                    <div class="setting-item">
-                        <label for="smoothCurve">スムースカーブ</label>
-                        <input type="number" id="smoothCurve" value="2.5" min="0" step="0.1">
-                    </div>
-                    <div class="setting-item">
-                        <label for="freqCompensation">周波数補正 (0-2)</label>
-                        <input type="number" id="freqCompensation" value="2" min="0" max="2" step="0.1">
-                    </div>
-                    <div class="setting-item">
-                        <label for="fps">FPS</label>
-                        <input type="number" id="fps" value="60" min="1" step="1">
-                    </div>
-                    <div class="setting-item">
-                        <label for="samplingInterval">サンプリング間隔 (n分の1)</label>
-                        <input type="number" id="samplingInterval" value="2" min="1" step="1">
-                    </div>
-                    <div class="setting-item">
-                        <label for="barColor">バーの色</label>
-                        <input type="color" id="barColor" value="#ff3165">
+                <!-- 詳細設定 (デフォルトで展開) -->
+                <div class="card">
+                    <button class="settings-toggle open" id="settingsToggle">
+                        <span class="arrow">▶</span> 詳細設定
+                    </button>
+                    <div class="settings-body open" id="settingsBody">
+                        <div style="height:0.75rem"></div>
+                        <div class="settings-grid">
+                            <div class="setting-item">
+                                <label for="minFreq">最小周波数 (Hz)</label>
+                                <input type="number" id="minFreq" value="20" min="1" step="1">
+                            </div>
+                            <div class="setting-item">
+                                <label for="maxFreq">最大周波数 (Hz)</label>
+                                <input type="number" id="maxFreq" value="24000" min="1" step="1">
+                            </div>
+                            <div class="setting-item">
+                                <label for="numBars">バーの数</label>
+                                <input type="number" id="numBars" value="480" min="1" step="1">
+                            </div>
+                            <div class="setting-item">
+                                <label for="barThickness">棒の太さ</label>
+                                <input type="number" id="barThickness" value="5" min="1" step="1">
+                            </div>
+                            <div class="setting-item">
+                                <label for="barHeightScale">高さスケール</label>
+                                <input type="number" id="barHeightScale" value="0.5" min="0" step="0.1">
+                            </div>
+                            <div class="setting-item">
+                                <label for="attack">アタック</label>
+                                <input type="number" id="attack" value="0.6" min="0" max="1" step="0.01">
+                            </div>
+                            <div class="setting-item">
+                                <label for="decay">ディケイ</label>
+                                <input type="number" id="decay" value="0.6" min="0" max="1" step="0.01">
+                            </div>
+                            <div class="setting-item">
+                                <label for="peakBrightness">ピーク輝度</label>
+                                <input type="number" id="peakBrightness" value="1.0" min="0" step="0.1">
+                            </div>
+                            <div class="setting-item">
+                                <label for="smoothCurve">スムースカーブ</label>
+                                <input type="number" id="smoothCurve" value="2.5" min="0" step="0.1">
+                            </div>
+                            <div class="setting-item">
+                                <label for="freqCompensation">周波数補正 (0-2)</label>
+                                <input type="number" id="freqCompensation" value="2" min="0" max="2" step="0.1">
+                            </div>
+                            <div class="setting-item">
+                                <label for="fps">FPS</label>
+                                <input type="number" id="fps" value="60" min="1" step="1">
+                            </div>
+                            <div class="setting-item">
+                                <label for="samplingInterval">サンプリング間隔 (n分の1)</label>
+                                <input type="number" id="samplingInterval" value="2" min="1" step="1">
+                            </div>
+                            <div class="setting-item">
+                                <label for="barColor">バーの色</label>
+                                <input type="color" id="barColor" value="#ff3165">
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- 記録形式 (.sb3がデフォルト) -->
+                <div class="card">
+                    <div class="card-title">記録形式</div>
+                    <div class="format-group">
+                        <label class="format-option">
+                            <input type="radio" name="format" value="waveform">
+                            波形データ (.txt)
+                        </label>
+                        <label class="format-option">
+                            <input type="radio" name="format" value="sb3" checked>
+                            .sb3 (Scratch)
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 生成ボタン -->
+                <button class="btn-generate" id="btnGenerate" disabled>波形を生成</button>
+
+                <!-- プログレス -->
+                <div class="card progress-area" id="progressArea">
+                    <div class="progress-bar-track">
+                        <div class="progress-bar-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">準備中…</div>
+                </div>
+
+                <!-- ステータス -->
+                <div class="status-msg" id="statusMsg"></div>
             </div>
-        </div>
 
-        <!-- Format Selection -->
-        <div class="card">
-            <div class="card-title">記録形式</div>
-            <div class="format-group">
-                <label class="format-option">
-                    <input type="radio" name="format" value="waveform" checked>
-                    波形データ (.txt)
-                </label>
-                <label class="format-option">
-                    <input type="radio" name="format" value="sb3">
-                    .sb3 (Scratch)
-                </label>
+            <!-- 右カラム: プレビュー系 (大きめ) -->
+            <div class="right-column">
+                <!-- 波形プレビュー -->
+                <div class="card">
+                    <div class="card-title">波形プレビュー</div>
+                    <canvas class="preview-canvas" id="previewCanvas"></canvas>
+                    <audio id="previewAudio" controls style="width: 100%; margin-top: 1rem; display: none; outline: none; border-radius: 999px;"></audio>
+                </div>
+
+                <!-- Scratchプレビュー (常時表示) -->
+                <div class="card" id="scratchPreviewCard">
+                    <div class="card-title">Scratch プレビュー</div>
+                    <div class="scratch-preview-placeholder" id="scratchPlaceholder">
+                        出力されていません
+                    </div>
+                    <iframe id="scratchPreview" src="./player.html" class="scratch-preview-iframe" style="display:none;"
+                        allowfullscreen allow="autoplay">
+                    </iframe>
+                </div>
             </div>
-        </div>
-
-        <!-- Generate Button -->
-        <button class="btn-generate" id="btnGenerate" disabled>波形を生成</button>
-
-        <!-- Progress -->
-        <div class="card progress-area" id="progressArea">
-            <div class="progress-bar-track">
-                <div class="progress-bar-fill" id="progressFill"></div>
-            </div>
-            <div class="progress-text" id="progressText">準備中…</div>
-        </div>
-
-        <!-- Preview Canvas -->
-        <div class="card">
-            <div class="card-title">プレビュー</div>
-            <canvas class="preview-canvas" id="previewCanvas"></canvas>
-        </div>
-
-        <!-- Status -->
-        <div class="status-msg" id="statusMsg"></div>
-
-        <!-- Scratch Preview -->
-        <div class="card" id="scratchPreviewCard" style="display:none;">
-            <div class="card-title">Scratch プレビュー</div>
-            <div class="scratch-preview-placeholder" id="scratchPlaceholder">
-                .sb3 を生成するとここでプレビューできます
-            </div>
-            <iframe
-                id="scratchPreview"
-                src="./player.html"
-                class="scratch-preview-iframe"
-                style="display:none;"
-                allowfullscreen
-                allow="autoplay">
-            </iframe>
         </div>
     </div>
 
@@ -688,6 +736,15 @@
             fileNameEl.textContent = file.name;
             btnGenerate.disabled = false;
             setStatus('');
+            
+            // 音源をオーディオプレイヤーにセット
+            const previewAudio = document.getElementById('previewAudio');
+            if (previewAudio.src) {
+                URL.revokeObjectURL(previewAudio.src);
+            }
+            previewAudio.src = URL.createObjectURL(file);
+            previewAudio.style.display = 'none'; // 生成完了後に表示する
+            globalRawFrames = []; // クリア
         }
 
         // ===== Status =====
@@ -737,38 +794,52 @@
             return [h * 360, s * 100, l * 100];
         }
 
-        // ===== Encode Frame (same mapping as old version) =====
-        function encodeFrame(barHeights, interval) {
-            const chars = [];
-            for (let i = 0; i < barHeights.length; i++) {
-                if (i % interval !== 0) continue;
-                const h = barHeights[i];
-                const capped = Math.min(h, 315);
-                const number = Math.floor(capped / 2);
-                const result = Math.min(Math.round(number / 3), 52);
+        // ===== エンコード用ルックアップテーブル (事前生成) =====
+        const ENCODE_LOOKUP = (() => {
+            const table = new Array(53);
+            table[0] = '"'; table[1] = '#'; table[2] = '$';
+            table[3] = '%'; table[4] = '&'; table[5] = "'";
+            table[6] = '('; table[7] = ')'; table[8] = '=';
+            table[9] = '^'; table[10] = '!';
+            for (let i = 11; i <= 36; i++) table[i] = String.fromCharCode(96 + i - 10);
+            for (let i = 37; i <= 52; i++) table[i] = String.fromCharCode(64 + i - 36);
+            return table;
+        })();
 
-                if (result === 0) chars.push('"');
-                else if (result === 1) chars.push('#');
-                else if (result === 2) chars.push('$');
-                else if (result === 3) chars.push('%');
-                else if (result === 4) chars.push('&');
-                else if (result === 5) chars.push("'");
-                else if (result === 6) chars.push('(');
-                else if (result === 7) chars.push(')');
-                else if (result === 8) chars.push('=');
-                else if (result === 9) chars.push('^');
-                else if (result === 10) chars.push('!');
-                else if (result >= 11 && result <= 36) chars.push(String.fromCharCode(96 + result - 10));
-                else if (result >= 37 && result <= 52) chars.push(String.fromCharCode(64 + result - 36));
+        // ===== フレームを数値インデックス配列にエンコード =====
+        function encodeFrameNumeric(barHeights, interval) {
+            const count = Math.ceil(barHeights.length / interval);
+            const indices = new Uint8Array(count);
+            let idx = 0;
+            for (let i = 0; i < barHeights.length; i += interval) {
+                indices[idx++] = Math.min(Math.round(Math.floor(Math.min(barHeights[i], 315) / 2) / 3), 52);
+            }
+            return indices;
+        }
+
+        // ===== 数値配列を文字列に変換 =====
+        function numericToString(indices) {
+            const chars = new Array(indices.length);
+            for (let i = 0; i < indices.length; i++) {
+                chars[i] = ENCODE_LOOKUP[indices[i]];
             }
             const line = chars.join('');
-            // All-silence frames → empty string
+            // 全無音フレーム → 空文字列
             return /^"+$/.test(line.trim()) ? '' : line;
+        }
+
+        // ===== 互換用: 従来のencodeFrame (内部でルックアップ使用) =====
+        function encodeFrame(barHeights, interval) {
+            return numericToString(encodeFrameNumeric(barHeights, interval));
         }
 
         // ===== Draw Preview =====
         const previewCanvas = document.getElementById('previewCanvas');
+        let globalRawFrames = [];
+        let globalSettings = null;
+
         function drawPreview(barHeights, settings) {
+            if (!barHeights) return;
             const canvas = previewCanvas;
             canvas.width = canvas.offsetWidth * (window.devicePixelRatio || 1);
             canvas.height = canvas.offsetHeight * (window.devicePixelRatio || 1);
@@ -797,6 +868,32 @@
                 ctx.fillRect(x, h - barH, thickness, barH);
             }
         }
+
+        // ===== プレビューオーディオの同期処理 =====
+        const previewAudio = document.getElementById('previewAudio');
+        function updatePreviewFromAudio() {
+            if (!globalRawFrames || globalRawFrames.length === 0 || !globalSettings) return;
+            const time = previewAudio.currentTime;
+            const frame = Math.floor(time * globalSettings.fps);
+            if (frame >= 0 && frame < globalRawFrames.length) {
+                drawPreview(globalRawFrames[frame], globalSettings);
+            }
+        }
+
+        function rafLoop() {
+            if (!previewAudio.paused) {
+                updatePreviewFromAudio();
+                requestAnimationFrame(rafLoop);
+            }
+        }
+
+        previewAudio.addEventListener('play', () => {
+            requestAnimationFrame(rafLoop);
+        });
+        previewAudio.addEventListener('timeupdate', () => {
+            if (previewAudio.paused) updatePreviewFromAudio(); // シーク時などの更新用
+        });
+        previewAudio.addEventListener('seeked', updatePreviewFromAudio);
 
         // ===== Offline FFT Processing (Cross-device consistent) =====
         async function generateWaveform() {
@@ -850,7 +947,10 @@
                 let smoothedData = new Float64Array(smoothingPoints);
                 let smoothedInitialized = false;
 
-                const recordedFrames = [];
+                // フレームデータを事前確保した配列に格納
+                const recordedNumeric = new Array(totalFrames);
+                globalRawFrames = new Array(totalFrames); // 生波形データも保存
+                let frameIdx = 0;
                 let lastBarHeights = null;
 
                 const logMinFreq = Math.log(settings.minFreq);
@@ -969,7 +1069,11 @@
                         }
 
                         lastBarHeights = Array.from(barHeights);
-                        recordedFrames.push(lastBarHeights.map(h => Math.floor(h)));
+                        globalRawFrames[frameIdx] = lastBarHeights; // 再生同期用に保存
+                        // 数値インデックスとして直接エンコード（中間文字列を回避）
+                        const intHeights = new Float64Array(barHeights.length);
+                        for (let k = 0; k < barHeights.length; k++) intHeights[k] = Math.floor(barHeights[k]);
+                        recordedNumeric[frameIdx++] = encodeFrameNumeric(intHeights, settings.samplingInterval);
                     }
 
                     // Update progress
@@ -989,8 +1093,15 @@
                 progressText.textContent = 'エンコード中…';
                 await new Promise(r => setTimeout(r, 0));
 
-                // 6. Encode all frames
-                const encodedLines = recordedFrames.map(frame => encodeFrame(frame, settings.samplingInterval));
+                // 6. 数値配列を文字列に一括変換
+                const encodedLines = new Array(totalFrames);
+                for (let i = 0; i < totalFrames; i++) {
+                    encodedLines[i] = numericToString(recordedNumeric[i]);
+                }
+
+                // エンコード完了後にプレイヤーを表示・設定保存
+                globalSettings = settings;
+                previewAudio.style.display = 'block';
 
                 // 7. Save
                 if (format === 'waveform') {
@@ -1155,7 +1266,7 @@
         });
 
         function sendToPlayer(arrayBuffer) {
-            scratchPreviewCard.style.display = '';
+            // Scratchプレビューカードは常時表示なのでdisplay操作不要
             scratchPlaceholder.style.display = 'none';
             scratchPreview.style.display = 'block';
             if (playerReady) {
