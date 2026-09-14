@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>波形メーカー (Waveform Maker) v3.0</title>
+  <!-- FOUC防止 & 初期テーマ設定 (Google Material You / M3 仕様) -->
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('waveform_maker_theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        document.documentElement.classList.remove('dark');
+      }
+    })();
+  </script>
+  <!-- Google Fonts: Kosugi Maru & Roboto Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Kosugi Maru"', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="theme-surface-base kosugi-maru-regular transition-colors duration-150">
+
+  <!-- 操作ブロック用ローディングオーバーレイ (M3 Surface) -->
+  <div id="loadingOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center z-50 transition-opacity duration-300">
+    <div class="flex flex-col items-center space-y-4 p-8 theme-surface-dialog border theme-border rounded-3xl shadow-2xl max-w-sm text-center">
+      <svg class="animate-spin h-10 w-10 text-[#1A73E8]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+      </svg>
+      <div id="loadingMessage" class="text-base font-medium theme-text-primary">初期化中...</div>
+      <div id="loadingSubMessage" class="text-xs theme-text-secondary">ベースファイルを読み込んでいます</div>
+    </div>
+  </div>
+
+  <!-- Google風 トップヘッダーバー -->
+  <header class="google-header">
+    <div class="google-brand">
+      <span class="google-brand-text">波形メーカー</span>
+      <span class="google-brand-badge">v3.0</span>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <!-- テーマ切り替えトグルボタン (ライト ☀️ / ダーク 🌙) -->
+      <button id="themeToggleButton" class="btn-icon" title="テーマ切り替え (ライト / ダーク)">
+        <svg id="themeSunIcon" class="h-5 w-5 hidden text-[#FBBC05]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd" />
+        </svg>
+        <svg id="themeMoonIcon" class="h-5 w-5 text-[#5F6368]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- スライドイン ログコンテナ -->
+  <div id="logContainer" class="log-container">
+    <div class="log-header">
+      <span>実行ログ</span>
+      <button id="closeLogButton" class="btn-icon w-8 h-8 text-[#5F6368] hover:text-[#202124]" title="閉じる">✕</button>
+    </div>
+    <div id="logMessages" class="log-messages"></div>
+  </div>
+
+  <!-- メインコンテンツ -->
+  <main class="main-container">
+    <!-- タイトル部 -->
+    <div class="text-center mb-8">
+      <h1 class="text-2xl sm:text-3xl font-normal theme-text-primary mb-2 tracking-tight">高性能波形生成マシーン</h1>
+      <p class="text-xs sm:text-sm theme-text-secondary">Scratchや動画編集で使える滑らかで美しいオーディオ波形を瞬時に生成</p>
+    </div>
+
+    <!-- 検索バー風 ファイルアップローダー -->
+    <div class="w-full max-w-xl flex flex-col items-center mb-6">
+      <label for="audioFile" class="google-search-uploader w-full">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#9AA0A6]" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z" />
+        </svg>
+        <span id="selectedFileNameDisplay" class="google-search-uploader-text">オーディオファイルを選択 (.mp3, .wav, .aac, .flac ...)</span>
+        <span class="google-search-uploader-btn">参照</span>
+      </label>
+      <input type="file" id="audioFile" accept="audio/mpeg, audio/wav, .mp3, .wav, .aac, .flac, .ogg, .aiff, .m4a, .amr, .opus, .pcm" class="hidden">
+      
+      <!-- オーディオプレイヤー -->
+      <audio id="audioPlayer" controls class="shadow-sm"></audio>
+      
+      <!-- アクションボタン群 (M3スタイル) -->
+      <div class="flex flex-wrap items-center justify-center gap-3 mt-4">
+        <button id="recordStartButton" class="btn-primary" disabled>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
+          </svg>
+          <span id="recordStartButtonText">高速解析開始</span>
+        </button>
+
+        <button id="openBarEditorButton" class="btn-tonal">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#1A73E8]" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+          </svg>
+          バーエディター
+        </button>
+
+        <button id="saveBarHeightsButton" class="btn-tonal" disabled>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#5F6368]" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm-3.293 9.293a1 1 0 011.414 0L9 12.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414z" />
+          </svg>
+          保存
+        </button>
+      </div>
+
+      <!-- プログレスバー -->
+      <div id="progressContainer" class="w-full mt-4 hidden">
+        <div class="flex justify-between text-xs theme-text-secondary mb-1.5 font-medium">
+          <span id="progressStatusText">高速解析準備中...</span>
+          <span id="progressPercentText" class="font-mono text-[#1A73E8]">0%</span>
+        </div>
+        <div class="w-full bg-[#E8EAED] dark:bg-[#3C4043] rounded-full h-1.5 overflow-hidden">
+          <div id="progressBar" class="bg-[#1A73E8] h-1.5 rounded-full transition-all duration-75" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- 記録形式セグメント -->
+      <div class="flex items-center gap-6 mt-4 p-2.5 px-4 theme-surface-container-low border theme-border rounded-full text-xs theme-text-secondary">
+        <span class="font-medium theme-text-primary">記録形式:</span>
+        <label class="inline-flex items-center cursor-pointer">
+          <input type="radio" name="recordFormat" value="waveform" class="accent-[#1A73E8] cursor-pointer" checked>
+          <span class="ml-1.5 theme-text-primary">波形データ (.txt)</span>
+        </label>
+        <label class="inline-flex items-center cursor-pointer">
+          <input type="radio" name="recordFormat" value="sb3" class="accent-[#1A73E8] cursor-pointer">
+          <span class="ml-1.5 theme-text-primary">.sb3として記録 (Scratch)</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- 波形描画キャンバス -->
+    <canvas id="audioSpectrum" class="preview-mode-wave1"></canvas>
+
+    <!-- 設定カード (M3 Elevated Card) -->
+    <div class="google-card">
+      <div class="google-card-header">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#1A73E8]" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+        </svg>
+        波形パラメータ設定
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div class="setting-item sm:col-span-2 md:col-span-3">
+          <label for="previewModeSelect">波形プレビュー形式:</label>
+          <select id="previewModeSelect">
+            <option value="wave1" selected>波型1 (通常波形・下端基準) 【デフォルト】</option>
+            <option value="wave2">波型2 (上下対称・中央基準)</option>
+            <option value="circle1">円型1 (円形・外側伸長)</option>
+            <option value="circle2">円型2 (円形・内外両方伸長)</option>
+            <option value="circle3">円型3 (円形・内側伸長)</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <label for="minFreqInput">最小周波数 (Hz):</label>
+          <input type="number" id="minFreqInput" value="20" min="0" step="1">
+        </div>
+
+        <div class="setting-item">
+          <label for="maxFreqInput">最大周波数 (Hz):</label>
+          <input type="number" id="maxFreqInput" value="24000" min="0" step="1">
+        </div>
+
+        <div class="setting-item">
+          <label for="numBarsInput">バーの数:</label>
+          <input type="number" id="numBarsInput" value="480" min="0" step="1">
+        </div>
+
+        <div class="setting-item sm:col-span-2 md:col-span-3">
+          <label for="samplingMethodSelect">帯域サンプリング方式 (参照方法):</label>
+          <select id="samplingMethodSelect">
+            <option value="peak" selected>最大値 (ピーク) 【推奨: アタック音が最もダイナミックに跳ね上がります】</option>
+            <option value="average">算術平均 (従来の平均値)</option>
+            <option value="rms">RMS (実効値 / 聴感音量)</option>
+            <option value="blend">ピークブレンド (ピーク70% + 平均30%)</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <label for="barHeightScaleInput">高さスケール:</label>
+          <input type="number" id="barHeightScaleInput" value="0.5" min="0" step="0.1">
+        </div>
+
+        <div class="setting-item">
+          <label for="attackInput">アタック (Attack):</label>
+          <input type="number" id="attackInput" value="0.6" min="0" step="0.01">
+        </div>
+
+        <div class="setting-item">
+          <label for="decayInput">ディケイ (Decay):</label>
+          <input type="number" id="decayInput" value="0.6" min="0" step="0.01">
+        </div>
+
+        <div class="setting-item">
+          <label for="peakBrightnessInput">ピーク輝度:</label>
+          <input type="number" id="peakBrightnessInput" value="1.0" min="0" step="0.1">
+        </div>
+
+        <div class="setting-item">
+          <label for="smoothCurveInput">スムースカーブ:</label>
+          <input type="number" id="smoothCurveInput" value="2.5" min="0" step="0.1">
+        </div>
+
+        <div class="setting-item">
+          <label for="freqCompensationInput">周波数補正 (0-2):</label>
+          <input type="number" id="freqCompensationInput" value="2" min="0" step="0.1">
+        </div>
+
+        <div class="setting-item">
+          <label for="fpsInput">描画FPS:</label>
+          <input type="number" id="fpsInput" value="60" min="1" step="1">
+        </div>
+
+        <div class="setting-item">
+          <label for="intervalInput">サンプリング間隔 (n分の1):</label>
+          <input type="number" id="intervalInput" value="2" min="1" step="1">
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- バーエディター モーダル (Material 3 Dialog: 角丸 28px, 白背景, 広々レイアウト) -->
+  <div id="barEditorModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40 hidden p-4">
+    <div class="theme-surface-dialog border theme-border rounded-[28px] shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden">
+      <!-- モーダルヘッダー -->
+      <div class="flex items-center justify-between px-6 py-4 border-b theme-border theme-surface-container-low">
+        <h2 class="text-lg font-medium theme-text-primary flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#1A73E8] dark:text-[#8AB4F8]" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+          </svg>
+          バーエディター (Bar Editor)
+        </h2>
+        <button id="closeBarEditorTopButton" class="btn-icon w-8 h-8" title="閉じる">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- モーダル メインコンテンツ (12列グリッド: プレビュー4列 + コントロール8列) -->
+      <div id="barEditorModalBody" class="flex-grow overflow-y-auto no-scrollbar p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <!-- プレビュー表示エリア (4列: スクロール時も画面上に固定) -->
+        <div class="lg:col-span-4 lg:sticky lg:top-6 self-start bar-editor-preview-sticky flex flex-col items-center justify-start p-5 theme-surface-container-low border theme-border rounded-2xl h-fit">
+          <div class="flex items-center justify-between mb-3 w-full">
+            <span class="text-xs font-semibold theme-text-secondary">プレビュー</span>
+            <!-- 背景色切り替え (市松 / 黒 / 白) -->
+            <div id="previewBgToggleGroup" class="flex items-center gap-0.5 theme-surface-container p-0.5 rounded-lg text-[10px]">
+              <button type="button" data-bg="checker" class="preview-bg-btn px-2 py-0.5 rounded-md font-medium active" title="市松模様（透過確認）">市松</button>
+              <button type="button" data-bg="black" class="preview-bg-btn px-2 py-0.5 rounded-md font-medium" title="黒背景（発光・グロー確認）">黒</button>
+              <button type="button" data-bg="white" class="preview-bg-btn px-2 py-0.5 rounded-md font-medium" title="白背景（暗色確認）">白</button>
+            </div>
+          </div>
+          <div id="barPreviewWrapper" class="checkerboard-bg p-4 rounded-xl border theme-border flex items-center justify-center min-h-[300px] w-full overflow-hidden shadow-inner transition-colors duration-150">
+            <canvas id="barPreviewCanvas" class="max-h-[280px] max-w-full object-contain"></canvas>
+          </div>
+          <div class="text-[11px] theme-text-secondary mt-3 text-center">透過スプライトとして生成されます</div>
+        </div>
+
+        <!-- コントロール群エリア (8列: 横幅約650px以上でUI被りを完全排除) -->
+        <div class="lg:col-span-8 space-y-4 min-w-0">
+          <!-- プリセット選択 (M3 Filter Chips) -->
+          <div>
+            <label class="text-xs font-medium theme-text-secondary block mb-1.5">プリセット:</label>
+            <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              <button type="button" data-preset="neon" class="preset-btn px-2.5 py-1.5 text-xs theme-surface-container hover:bg-[#E8EAED] dark:hover:bg-[#3C4043] rounded-full theme-text-primary font-medium transition-colors border border-transparent">ネオン</button>
+              <button type="button" data-preset="led" class="preset-btn px-2.5 py-1.5 text-xs theme-surface-container hover:bg-[#E8EAED] dark:hover:bg-[#3C4043] rounded-full theme-text-primary font-medium transition-colors border border-transparent">LED</button>
+              <button type="button" data-preset="cyberpunk" class="preset-btn px-2.5 py-1.5 text-xs theme-surface-container hover:bg-[#E8EAED] dark:hover:bg-[#3C4043] rounded-full theme-text-primary font-medium transition-colors border border-transparent">サイバー</button>
+              <button type="button" data-preset="fire" class="preset-btn px-2.5 py-1.5 text-xs theme-surface-container hover:bg-[#E8EAED] dark:hover:bg-[#3C4043] rounded-full theme-text-primary font-medium transition-colors border border-transparent">ファイア</button>
+              <button type="button" data-preset="solid" class="preset-btn px-2.5 py-1.5 text-xs theme-surface-container hover:bg-[#E8EAED] dark:hover:bg-[#3C4043] rounded-full theme-text-primary font-medium transition-colors border border-transparent preset-active">基本 (単色)</button>
+            </div>
+          </div>
+
+          <!-- 基本設定 (常時表示) -->
+          <div class="p-4 theme-surface-container-low rounded-2xl border theme-border space-y-3">
+            <div class="flex items-center justify-between border-b theme-border pb-2">
+              <span class="text-xs font-medium theme-accent flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                </svg>
+                基本設定 (色・太さ・丸み)
+              </span>
+              <span class="text-[10px] theme-text-secondary">常時適用</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <!-- 太さ (幅) -->
+              <div class="min-w-0">
+                <label for="baseBarWidthInput" class="text-[11px] font-medium theme-text-secondary block mb-1">太さ:</label>
+                <div class="flex items-center gap-2">
+                  <input type="range" id="baseBarWidthRange" min="2" max="100" value="24" class="flex-1 accent-[#1A73E8] dark:accent-[#8AB4F8] cursor-pointer h-1.5 bg-[#E8EAED] dark:bg-[#3C4043] rounded min-w-[50px]">
+                  <div class="input-suffix-group w-16 shrink-0">
+                    <input type="number" id="baseBarWidthInput" value="24" min="2" max="100" class="text-center">
+                    <span class="suffix-text">px</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 丸み (0〜100%) -->
+              <div class="min-w-0">
+                <label for="baseBorderRadiusInput" class="text-[11px] font-medium theme-text-secondary block mb-1">丸み:</label>
+                <div class="flex items-center gap-2">
+                  <input type="range" id="baseBorderRadiusRange" min="0" max="100" value="100" step="1" class="flex-1 accent-[#1A73E8] dark:accent-[#8AB4F8] cursor-pointer h-1.5 bg-[#E8EAED] dark:bg-[#3C4043] rounded min-w-[50px]">
+                  <div class="input-suffix-group w-16 shrink-0">
+                    <input type="number" id="baseBorderRadiusInput" value="100" min="0" max="100" step="1" class="text-center">
+                    <span class="suffix-text">%</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 基本色 -->
+              <div class="min-w-0">
+                <label for="baseColorInput" class="text-[11px] font-medium theme-text-secondary block mb-1">基本色:</label>
+                <input type="color" id="baseColorInput" value="#38bdf8" class="w-full h-7 p-0.5 theme-surface-base rounded-lg border theme-border cursor-pointer">
+              </div>
+            </div>
+          </div>
+
+          <!-- エフェクトスタック管理ヘッダー -->
+          <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <div class="flex flex-col">
+              <span class="text-xs font-medium theme-text-primary flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#1A73E8] dark:text-[#8AB4F8]" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+                </svg>
+                エフェクトスタック
+              </span>
+              <span class="text-[10px] theme-text-secondary ml-5">描画順: 上から順に重ねて描画（下が最前面）</span>
+            </div>
+
+            <!-- エフェクト追加メニュー -->
+            <div class="flex items-center gap-1.5">
+              <select id="availableEffectsSelect" class="theme-surface-container theme-text-primary text-xs py-1 px-2.5 rounded-full border theme-border focus:outline-none focus:border-[#1A73E8] dark:focus:border-[#8AB4F8]">
+                <option value="border">縁取り</option>
+                <option value="glow">グロー / Bloom</option>
+                <option value="gradient">グラデーション</option>
+                <option value="shapeArray">図形・画像集合 (配列)</option>
+                <option value="rgbShift">RGB Shift (色ズレ)</option>
+                <option value="texture">テクスチャ画像</option>
+              </select>
+              <button type="button" id="addEffectButton" class="btn-primary text-xs !py-1 !px-3 !h-auto flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                </svg>
+                追加
+              </button>
+            </div>
+          </div>
+
+          <!-- エフェクトカードコンテナ (動的スタック) -->
+          <div id="effectCardsContainer" class="space-y-3">
+            <!-- 動的にエフェクトカードが追加されます -->
+          </div>
+        </div>
+      </div>
+
+      <!-- モーダルフッター -->
+      <div class="flex flex-wrap items-center justify-between gap-2 px-6 py-4 border-t theme-border theme-surface-container-low">
+        <button id="resetBarEditorButton" class="text-xs text-[#EA4335] dark:text-[#F28B82] hover:bg-[#FCE8E6] dark:hover:bg-[#5C1D18]/40 px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1.5" title="設定をすべて初期化し単色に戻します">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+          </svg>
+          リセット (単色)
+        </button>
+        <div class="flex items-center gap-2">
+          <button id="downloadBarPngButton" class="btn-tonal text-xs py-1.5 px-3.5 h-9">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#5F6368]" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+            PNG保存
+          </button>
+          <button id="applyBarToVisualizerButton" class="btn-primary text-xs py-1.5 px-4 h-9">
+            波形描画に適用
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
